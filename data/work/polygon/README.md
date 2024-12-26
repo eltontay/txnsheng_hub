@@ -1,8 +1,10 @@
 # Polygon
 
+[← Back to Work](../README.md)
+
 ## Position
 **Developer Relations Engineer**  
-*2023 - 2024*
+*February 2024 - September 2024*
 
 ## Events
 
