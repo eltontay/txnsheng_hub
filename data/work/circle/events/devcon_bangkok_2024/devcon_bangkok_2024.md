@@ -2,12 +2,12 @@
 
 ## Activities
 
-- **Uniday** live demo on Circle developer platform - [Tweet](https://x.com/UniswapFND/status/1856219369036230767)
+- **Uniday** - live demo on Circle developer platform - [Tweet](https://x.com/UniswapFND/status/1856219369036230767)
 
-- Sponsor and judge at **ETHGlobal Bangkok** - [Tweet](https://x.com/TxnSheng/status/1858061272056807860)
+- **ETHGlobal Bangkok** - sponsor and judge - [Tweet](https://x.com/TxnSheng/status/1858061272056807860)
 
-- Speaker and judge at **Circle ProDev Demo Day** - [Tweet](https://x.com/TxnSheng/status/1856567578640167264)
+- **Circle ProDev Demo Day** - speaker and judge - [Tweet](https://x.com/TxnSheng/status/1856567578640167264)
 
-- **Chainlink Hub** Live Demo on Circle Developer Platform - [Tweet](https://x.com/TxnSheng/status/1855780616861782334)
+- **Chainlink Hub** - live demo on circle developer platform - [Tweet](https://x.com/TxnSheng/status/1855780616861782334)
 
-- Payment at selected merchants in Bangkok using USDC in **Rubie Wallet** - [Tweet](https://x.com/TxnSheng/status/1856549983925006447)
+- **Rubie Wallet** - Payment at selected merchants in Bangkok using USDC in - [Tweet](https://x.com/TxnSheng/status/1856549983925006447)
