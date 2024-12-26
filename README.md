@@ -6,16 +6,20 @@ Welcome to the Txnsheng ('transact-sheng') Hub repository! This repository serve
 
 ## Contents
 
-- [Work](data/work/)
-  - [Circle](data/work/circle/)  
-    - [Events](data/work/circle/events/)
-    - [Demos](data/work/circle/demos/)
-  - [Polygon](data/work/polygon/)
-    - [Events](data/work/polygon/events/)
-    - [Demos](data/work/polygon/demos/)
-- [Side Missions](data/side_missions/)
+### [Work](data/work/)
+  - [Circle](data/work/circle/) - *Developer Relations Lead, APAC* - Present
+  - [Polygon](data/work/polygon/) - *Developer Relations Engineer*
 
-## How to Use This Repository
+### [Research](data/research/)
+  - [Hyperliquid](data/research/hyperliquid/README.md)
 
-- Navigate through the folders in the `data` directory to explore different projects and events.
-- Each event or demo contains a Markdown file with detailed information and links.
+### [Ecosystem](data/ecosystem/)
+- **Alpha Communities**
+  - [Cookies Reads](https://t.me/cookiesreads) - Research-focused crypto insights by [@jinglingcookies](https://x.com/jinglingcookies)
+  - [Kirby Crypto](https://t.me/kirbycrypto) - Latest news and alpha by [@kirbyongeo](https://x.com/kirbyongeo)
+
+## Contributing
+
+I welcome collaborations and contributions! If you'd like to work together or suggest improvements, please [open a new issue](https://github.com/eltontay/txnsheng_hub/issues) with your proposal.
+
+Looking forward to collaborating with you! 🚀
