@@ -1,9 +1,9 @@
 # [Event Name] [Year]
 
+[← Back to Circle](../../README.md)
+
 ## Activities
 
-- **[Activity Name]** - [activity type] - [Tweet/Link]()
-  - Additional context (if needed)
+- **[Activity Name With Caps]** - [activity type] - [Tweet/Link]()
 
-- **[Activity Name]** - [activity type] - [Tweet/Link]()
-  - Additional context (if needed)
+- **[Activity Name With Caps]** - [activity type] - [Tweet/Link]()
