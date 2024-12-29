@@ -1,0 +1,5 @@
+openai
+python-telegram-bot
+PyGithub
+python-dotenv
+urllib3<2.0 
