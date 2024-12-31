@@ -1,10 +1,10 @@
 [build]
-builder = "nixpacks"
-buildCommand = """
-apt-get update && apt-get install -y python3 python3-pip
-pip install -r backend/requirements.txt
-"""
+builder = "PYTHON"
 
 [deploy]
 startCommand = "python3 backend/src/bot/main.py"
-restartPolicyType = "always" 
+restartPolicyType = "always"
+
+[build.env]
+NIXPACKS_PYTHON_VERSION = "3.11"
+REQUIREMENTS_PATH = "backend/requirements.txt" 
