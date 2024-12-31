@@ -4,3 +4,6 @@ builder = "nixpacks"
 [deploy]
 startCommand = "python3 backend/src/bot/main.py"
 restartPolicyType = "always"
+
+[build.env]
+PYTHON_VERSION = "3.11"
