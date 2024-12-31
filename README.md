@@ -22,6 +22,43 @@ Welcome to the Txnsheng ('transact-sheng') Hub repository! This repository serve
 
 This repository includes a Telegram bot that helps manage and update content through AI-assisted analysis. Access is limited to approved users only.
 
+### Bot Commands
+
+#### Content Management
+- `/analyzeContent` - Analyze and suggest updates
+  ```
+  Format:
+  /analyzeContent path/to/file.md
+  Your content here...
+  Can span multiple lines
+  With proper formatting
+  ```
+
+#### PR Management
+- `/createPr` - Create a pull request with changes
+- `/listPrs` - Show all open pull requests
+- `/mergePr <number>` - Merge a specific PR
+- `/closePr <number>` - Close a specific PR
+
+#### Admin Commands
+- `/addUser <username>` - Add new allowed user
+- `/removeUser <username>` - Remove allowed user
+- `/listUsers` - Show all allowed users
+
+### Example Usage
+```
+/analyzeContent data/research/README.md
+Here's my research about XYZ...
+It can span multiple lines
+
+And have proper formatting
+
+- Even bullet points
+- And lists
+```
+
+## Development Setup
+
 ### Prerequisites
 - Python 3.8+
 - OpenAI API key
@@ -29,8 +66,7 @@ This repository includes a Telegram bot that helps manage and update content thr
 - GitHub Personal Access Token
 - Access permission from [@txnsheng](https://t.me/txnsheng)
 
-### Local Development Setup
-
+### Local Development
 1. Clone the repository:
 ```bash
 git clone https://github.com/eltontay/txnsheng_hub.git
@@ -54,7 +90,6 @@ OPENAI_API_KEY=your_openai_api_key
 TELEGRAM_TOKEN=your_telegram_bot_token
 GITHUB_TOKEN=your_github_personal_access_token
 REPO_NAME=username/repo-name
-WEB3_PROVIDER=your_web3_provider_url  # Optional, for token gating
 ```
 
 5. Run the bot:
@@ -62,48 +97,24 @@ WEB3_PROVIDER=your_web3_provider_url  # Optional, for token gating
 python backend/src/bot/main.py
 ```
 
-### Bot Commands
-Once you have access, you can use these commands:
-
-#### General Commands
-- `/start` - Initialize the bot and see available commands
-- `/analyzeContent <path> <info>` - Analyze and suggest updates
-- `/createPr` - Create a pull request with changes
-- `/listPrs` - Show all open pull requests
-- `/mergePr <number>` - Merge a specific PR
-- `/closePr <number>` - Close a specific PR
-
-#### Admin Commands
-- `/addUser <username>` - Add new allowed user
-- `/removeUser <username>` - Remove allowed user
-- `/listUsers` - Show all allowed users
-
-### Deployment
-The bot is deployed on Render using the provided `render.yaml` configuration. To deploy your own instance:
-
-1. Fork this repository
-2. Create a new Web Service on Render
-3. Connect your GitHub repository
-4. Add your environment variables in Render dashboard
-5. Deploy!
-
 ## Project Structure
 ```
 txnsheng_hub/
+├── backend/
+│   └── src/
+│       └── bot/
+│           ├── config/
+│           │   └── allowed_users.json
+│           ├── main.py
+│           └── telegram_ai_bot.py
 ├── data/
 │   ├── work/
 │   ├── research/
 │   └── ecosystem/
-├── src/
-│   └── bot/
-│       ├── config/
-│       │   └── allowed_users.json
-│       ├── main.py
-│       └── telegram_ai_bot.py
 ├── .env.example
 ├── .gitignore
 ├── README.md
-├── render.yaml
+├── railway.toml
 └── requirements.txt
 ```
 

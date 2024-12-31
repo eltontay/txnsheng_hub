@@ -136,22 +136,34 @@ class TelegramAIBot:
 
         logger.info(f"New user started bot: {user.id} - {user.username}")
         await update.message.reply_text(
-            "Hello! I'm your AI-powered repository assistant. I can help:\n"
-            "1. Analyze new information and suggest README updates\n"
-            "2. Create PRs with the changes\n"
-            "3. List open PRs\n"
-            "4. Merge or close PRs\n"
-            "5. Manage allowed users (admin only)\n\n"
-            "Available commands:\n"
-            "/analyzeContent <path/to/readme.md> <your information> - Analyze and suggest updates\n"
+            "Hello! I'm your AI-powered repository assistant. I can help manage and update the repository content.\n\n"
+            "Available commands:\n\n"
+            "Content Management:\n"
+            "/analyzeContent - Analyze and suggest updates\n"
+            "Format:\n"
+            "/analyzeContent path/to/file.md\n"
+            "Your content here...\n"
+            "Can span multiple lines\n"
+            "With proper formatting\n\n"
+            
+            "PR Management:\n"
             "/createPr - Create a PR with pending changes\n"
             "/listPrs - Show all open PRs\n"
-            "/mergePr <pr_number> - Merge a specific PR\n"
-            "/closePr <pr_number> - Close a specific PR\n\n"
-            "Admin commands:\n"
+            "/mergePr <number> - Merge a specific PR\n"
+            "/closePr <number> - Close a specific PR\n\n"
+            
+            "Admin Commands:\n"
             "/addUser <username> - Add new allowed user\n"
             "/removeUser <username> - Remove allowed user\n"
-            "/listUsers - Show all allowed users"
+            "/listUsers - Show all allowed users\n\n"
+            
+            "Example usage:\n"
+            "/analyzeContent data/research/README.md\n"
+            "Here's my research about XYZ...\n"
+            "It can span multiple lines\n\n"
+            "And have proper formatting\n\n"
+            "- Even bullet points\n"
+            "- And lists"
         )
 
     async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -159,18 +171,37 @@ class TelegramAIBot:
             user = update.effective_user
             logger.info(f"Analysis requested by user {user.username}")
             
-            # Split the command arguments
-            args = context.args
-            if len(args) < 2:
+            # Get full message text
+            full_text = update.message.text
+            
+            # Remove the command from the start
+            command_end = full_text.find(' ')
+            if command_end == -1:
                 await update.message.reply_text(
                     "Please provide both the README path and the information to analyze.\n"
-                    "Example: /analyze docs/README.md Your information here"
+                    "Format: /analyzeContent path/to/readme.md\n"
+                    "Your content here...\n"
+                    "Can be multiple lines..."
                 )
                 return
+            
+            # Split into path and content
+            text_parts = full_text[command_end + 1:].strip().split('\n', 1)
+            if len(text_parts) < 2:
+                await update.message.reply_text(
+                    "Please provide the content in a new line after the path.\n"
+                    "Example:\n"
+                    "/analyzeContent docs/README.md\n"
+                    "Your content here...\n"
+                    "Can span multiple lines..."
+                )
+                return
+            
+            readme_path = text_parts[0].strip()
+            message = text_parts[1].strip()
 
             # Remove any leading slash from the path
-            readme_path = args[0].lstrip('/')
-            message = ' '.join(args[1:])
+            readme_path = readme_path.lstrip('/')
 
             # Get current README content
             try:
@@ -186,13 +217,13 @@ class TelegramAIBot:
             # Store context for PR creation
             context.user_data['pending_analysis'] = {
                 'content': analysis,
-                'path': readme_path,  # Now using clean path without leading slash
+                'path': readme_path,
                 'file_sha': file.sha
             }
             
             await update.message.reply_text(
                 "Here's my analysis:\n\n" + analysis + 
-                "\n\nWould you like me to create a PR with these changes? (Reply with /createpr to confirm)"
+                "\n\nWould you like me to create a PR with these changes? (Reply with /createPr to confirm)"
             )
 
             logger.info(f"Analysis completed for {readme_path}")
