@@ -1,7 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd backend && pip install -r requirements.txt"
+buildCommand = """
+apt-get update && apt-get install -y python3 python3-pip
+cd backend && pip3 install -r requirements.txt
+"""
 
 [deploy]
-startCommand = "cd backend && python src/bot/main.py"
+startCommand = "cd backend && python3 src/bot/main.py"
 restartPolicyType = "always" 
