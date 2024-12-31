@@ -402,7 +402,7 @@ class TelegramAIBot:
             await query.edit_message_text(f"Error processing PR: {str(e)}")
 
     async def get_repo_structure(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Show current repository structure"""
+        """Show high-level repository structure"""
         try:
             user = update.effective_user
             if not await self.check_access(user):
@@ -411,35 +411,26 @@ class TelegramAIBot:
 
             logger.info(f"Repository structure requested by user {user.username}")
 
-            def get_tree_content(path="", level=0):
+            def get_high_level_structure(path=""):
                 contents = self.repo.get_contents(path)
                 tree = ""
                 for content in contents:
-                    # Skip .git and other hidden files/folders
-                    if content.name.startswith('.'):
-                        continue
-                        
-                    prefix = "    " * level + ("📁 " if content.type == "dir" else "📄 ")
-                    tree += f"{prefix}{content.name}\n"
-                    
-                    if content.type == "dir":
+                    # Only process data directory and its immediate subdirectories
+                    if content.name == "data":
+                        tree += f"📁 {content.name}/\n"
                         try:
-                            tree += get_tree_content(content.path, level + 1)
+                            subcontents = self.repo.get_contents(content.path)
+                            for subcontent in subcontents:
+                                if subcontent.type == "dir":
+                                    tree += f"    📁 {subcontent.name}/\n"
                         except Exception as e:
                             logger.warning(f"Error accessing {content.path}: {str(e)}")
                 return tree
 
             structure = "Repository Structure:\n\n"
-            structure += get_tree_content()
+            structure += get_high_level_structure()
 
-            # Split message if it's too long (Telegram has 4096 char limit)
-            if len(structure) > 4000:
-                chunks = [structure[i:i+4000] for i in range(0, len(structure), 4000)]
-                for chunk in chunks:
-                    await update.message.reply_text(chunk)
-            else:
-                await update.message.reply_text(structure)
-
+            await update.message.reply_text(structure)
             logger.info("Repository structure sent successfully")
 
         except Exception as e:
