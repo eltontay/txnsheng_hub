@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: txnsheng-hub-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/bot/main.py
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: REPO_NAME
+        sync: false
+      - key: WEB3_PROVIDER
+        sync: false 

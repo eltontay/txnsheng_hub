@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import base64
 import logging
 from datetime import datetime
+import json
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(
@@ -31,22 +33,126 @@ REPO_NAME = os.getenv("REPO_NAME")
 class TelegramAIBot:
     def __init__(self):
         self.repo = github.get_repo(REPO_NAME)
+        self.w3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER))
+        self.allowed_users = self.load_allowed_users()
         logger.info(f"Bot initialized for repository: {REPO_NAME}")
+        logger.info(f"Loaded {len(self.allowed_users['allowed_handles'])} allowed users")
+
+    def load_allowed_users(self) -> dict:
+        """Load allowed users from config file"""
+        try:
+            config_path = Path(__file__).parent / "config" / "allowed_users.json"
+            with open(config_path, 'r') as f:
+                users = json.load(f)
+            return users
+        except Exception as e:
+            logger.error(f"Error loading allowed users: {str(e)}")
+            return {"allowed_handles": [], "admin_handles": []}
+
+    def save_allowed_users(self):
+        """Save current allowed users to config file"""
+        try:
+            config_path = Path(__file__).parent / "config" / "allowed_users.json"
+            with open(config_path, 'w') as f:
+                json.dump(self.allowed_users, f, indent=4)
+            logger.info("Saved updated allowed users list")
+        except Exception as e:
+            logger.error(f"Error saving allowed users: {str(e)}")
+
+    async def check_access(self, user) -> bool:
+        """Check if user has access based on handle"""
+        if user.username in self.allowed_users['allowed_handles']:
+            logger.info(f"Access granted to @{user.username}")
+            return True
+        logger.warning(f"Access denied for @{user.username}")
+        return False
+
+    async def check_admin(self, user) -> bool:
+        """Check if user is admin"""
+        return user.username in self.allowed_users['admin_handles']
+
+    async def add_allowed_user(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Add new allowed user (admin only)"""
+        user = update.effective_user
+        if not await self.check_admin(user):
+            await update.message.reply_text("Only admins can add new users.")
+            return
+
+        if not context.args:
+            await update.message.reply_text("Please provide a username: /adduser username")
+            return
+
+        new_user = context.args[0].replace('@', '')
+        if new_user not in self.allowed_users['allowed_handles']:
+            self.allowed_users['allowed_handles'].append(new_user)
+            self.save_allowed_users()
+            await update.message.reply_text(f"Added @{new_user} to allowed users.")
+            logger.info(f"Admin @{user.username} added new user @{new_user}")
+        else:
+            await update.message.reply_text(f"@{new_user} is already an allowed user.")
+
+    async def remove_allowed_user(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Remove allowed user (admin only)"""
+        user = update.effective_user
+        if not await self.check_admin(user):
+            await update.message.reply_text("Only admins can remove users.")
+            return
+
+        if not context.args:
+            await update.message.reply_text("Please provide a username: /removeuser username")
+            return
+
+        remove_user = context.args[0].replace('@', '')
+        if remove_user in self.allowed_users['allowed_handles']:
+            self.allowed_users['allowed_handles'].remove(remove_user)
+            self.save_allowed_users()
+            await update.message.reply_text(f"Removed @{remove_user} from allowed users.")
+            logger.info(f"Admin @{user.username} removed user @{remove_user}")
+        else:
+            await update.message.reply_text(f"@{remove_user} is not in allowed users.")
+
+    async def list_allowed_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """List all allowed users (admin only)"""
+        user = update.effective_user
+        if not await self.check_admin(user):
+            await update.message.reply_text("Only admins can view user list.")
+            return
+
+        users_list = "\n".join([f"@{u}" for u in self.allowed_users['allowed_handles']])
+        await update.message.reply_text(
+            f"Allowed Users:\n{users_list}\n\n"
+            f"Total: {len(self.allowed_users['allowed_handles'])} users"
+        )
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
+        
+        # Check handle-based access
+        if not await self.check_access(user):
+            await update.message.reply_text(
+                "Access denied. This bot is only available to specific users.\n"
+                "Please contact @txnsheng for access."
+            )
+            return
+
         logger.info(f"New user started bot: {user.id} - {user.username}")
         await update.message.reply_text(
             "Hello! I'm your AI-powered repository assistant. I can help:\n"
             "1. Analyze new information and suggest README updates\n"
             "2. Create PRs with the changes\n"
             "3. List open PRs\n"
-            "4. Merge or close PRs\n\n"
+            "4. Merge or close PRs\n"
+            "5. Manage allowed users (admin only)\n\n"
             "Available commands:\n"
-            "/analyze <path/to/readme.md> <your information>\n"
-            "/listprs - Show all open PRs\n"
-            "/merge <pr_number> - Merge a specific PR\n"
-            "/close <pr_number> - Close a specific PR"
+            "/analyzeContent <path/to/readme.md> <your information> - Analyze and suggest updates\n"
+            "/createPr - Create a PR with pending changes\n"
+            "/listPrs - Show all open PRs\n"
+            "/mergePr <pr_number> - Merge a specific PR\n"
+            "/closePr <pr_number> - Close a specific PR\n\n"
+            "Admin commands:\n"
+            "/addUser <username> - Add new allowed user\n"
+            "/removeUser <username> - Remove allowed user\n"
+            "/listUsers - Show all allowed users"
         )
 
     async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -266,13 +372,20 @@ class TelegramAIBot:
         logger.info("Starting bot...")
         application = Application.builder().token(TELEGRAM_TOKEN).build()
         
-        # Add handlers
+        # Add handlers with new command names
         application.add_handler(CommandHandler("start", self.start))
-        application.add_handler(CommandHandler("analyze", self.analyze))
-        application.add_handler(CommandHandler("createpr", self.create_pr))
-        application.add_handler(CommandHandler("listprs", self.list_prs))
-        application.add_handler(CommandHandler("merge", self.merge_pr))
-        application.add_handler(CommandHandler("close", self.close_pr))
+        application.add_handler(CommandHandler("verifyWallet", self.verify_wallet))
+        application.add_handler(CommandHandler("analyzeContent", self.analyze))
+        application.add_handler(CommandHandler("createPr", self.create_pr))
+        application.add_handler(CommandHandler("listPrs", self.list_prs))
+        application.add_handler(CommandHandler("mergePr", self.merge_pr))
+        application.add_handler(CommandHandler("closePr", self.close_pr))
+        
+        # User management handlers
+        application.add_handler(CommandHandler("addUser", self.add_allowed_user))
+        application.add_handler(CommandHandler("removeUser", self.remove_allowed_user))
+        application.add_handler(CommandHandler("listUsers", self.list_allowed_users))
+        
         application.add_handler(CallbackQueryHandler(self.button_callback))
         
         logger.info("Bot is ready! Starting polling...")
