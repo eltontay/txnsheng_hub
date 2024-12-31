@@ -12,6 +12,4 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: REPO_NAME
-        sync: false
-      - key: WEB3_PROVIDER
         sync: false 

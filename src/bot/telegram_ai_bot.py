@@ -33,7 +33,6 @@ REPO_NAME = os.getenv("REPO_NAME")
 class TelegramAIBot:
     def __init__(self):
         self.repo = github.get_repo(REPO_NAME)
-        self.w3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER))
         self.allowed_users = self.load_allowed_users()
         logger.info(f"Bot initialized for repository: {REPO_NAME}")
         logger.info(f"Loaded {len(self.allowed_users['allowed_handles'])} allowed users")
@@ -374,7 +373,6 @@ class TelegramAIBot:
         
         # Add handlers with new command names
         application.add_handler(CommandHandler("start", self.start))
-        application.add_handler(CommandHandler("verifyWallet", self.verify_wallet))
         application.add_handler(CommandHandler("analyzeContent", self.analyze))
         application.add_handler(CommandHandler("createPr", self.create_pr))
         application.add_handler(CommandHandler("listPrs", self.list_prs))
