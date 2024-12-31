@@ -138,6 +138,9 @@ class TelegramAIBot:
         await update.message.reply_text(
             "Hello! I'm your AI-powered repository assistant. I can help manage and update the repository content.\n\n"
             "Available commands:\n\n"
+            "Repository Management:\n"
+            "/repoStructure - Show current repository structure\n\n"
+            
             "Content Management:\n"
             "/analyzeContent - Analyze and suggest updates\n"
             "Format:\n"
@@ -398,6 +401,51 @@ class TelegramAIBot:
             logger.error(f"Error in button callback: {str(e)}", exc_info=True)
             await query.edit_message_text(f"Error processing PR: {str(e)}")
 
+    async def get_repo_structure(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show current repository structure"""
+        try:
+            user = update.effective_user
+            if not await self.check_access(user):
+                await update.message.reply_text("Access denied.")
+                return
+
+            logger.info(f"Repository structure requested by user {user.username}")
+
+            def get_tree_content(path="", level=0):
+                contents = self.repo.get_contents(path)
+                tree = ""
+                for content in contents:
+                    # Skip .git and other hidden files/folders
+                    if content.name.startswith('.'):
+                        continue
+                        
+                    prefix = "    " * level + ("📁 " if content.type == "dir" else "📄 ")
+                    tree += f"{prefix}{content.name}\n"
+                    
+                    if content.type == "dir":
+                        try:
+                            tree += get_tree_content(content.path, level + 1)
+                        except Exception as e:
+                            logger.warning(f"Error accessing {content.path}: {str(e)}")
+                return tree
+
+            structure = "Repository Structure:\n\n"
+            structure += get_tree_content()
+
+            # Split message if it's too long (Telegram has 4096 char limit)
+            if len(structure) > 4000:
+                chunks = [structure[i:i+4000] for i in range(0, len(structure), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk)
+            else:
+                await update.message.reply_text(structure)
+
+            logger.info("Repository structure sent successfully")
+
+        except Exception as e:
+            logger.error(f"Error getting repository structure: {str(e)}", exc_info=True)
+            await update.message.reply_text(f"Error getting repository structure: {str(e)}")
+
     def run(self):
         logger.info("Starting bot...")
         application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -414,6 +462,9 @@ class TelegramAIBot:
         application.add_handler(CommandHandler("addUser", self.add_allowed_user))
         application.add_handler(CommandHandler("removeUser", self.remove_allowed_user))
         application.add_handler(CommandHandler("listUsers", self.list_allowed_users))
+        
+        # Add new handler
+        application.add_handler(CommandHandler("repoStructure", self.get_repo_structure))
         
         application.add_handler(CallbackQueryHandler(self.button_callback))
         
