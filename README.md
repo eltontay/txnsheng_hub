@@ -59,7 +59,7 @@ WEB3_PROVIDER=your_web3_provider_url  # Optional, for token gating
 
 5. Run the bot:
 ```bash
-python src/bot/main.py
+python backend/src/bot/main.py
 ```
 
 ### Bot Commands
