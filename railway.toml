@@ -1,10 +1,6 @@
 [build]
-builder = "PYTHON"
+builder = "nixpacks"
 
 [deploy]
 startCommand = "python3 backend/src/bot/main.py"
 restartPolicyType = "always"
-
-[build.env]
-NIXPACKS_PYTHON_VERSION = "3.11"
-REQUIREMENTS_PATH = "backend/requirements.txt"
