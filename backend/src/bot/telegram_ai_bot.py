@@ -193,9 +193,9 @@ class TelegramAIBot:
             if command_end == -1:
                 await update.message.reply_text(
                     "Please provide both the README path and the information to analyze.\n"
-                    "Format: /analyzeContent path/to/readme.md\n"
+                    "Format: /analyzeContent path/to/file.md\n"
                     "Your content here...\n"
-                    "Can be multiple lines..."
+                    "Can span multiple lines..."
                 )
                 return
             
@@ -228,16 +228,28 @@ class TelegramAIBot:
             # Analyze with GPT
             analysis = await self.analyze_with_gpt(message, current_content, readme_path)
             
+            # Create keyboard for actions
+            keyboard = [
+                [
+                    InlineKeyboardButton("Create PR", callback_data=f"create_pr_{readme_path}"),
+                    InlineKeyboardButton("Improve Suggestion", callback_data=f"improve_{readme_path}"),
+                    InlineKeyboardButton("Cancel", callback_data="cancel")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             # Store context for PR creation
             context.user_data['pending_analysis'] = {
                 'content': analysis,
                 'path': readme_path,
-                'file_sha': file.sha
+                'file_sha': file.sha,
+                'original_message': message
             }
             
             await update.message.reply_text(
-                "Here's my analysis:\n\n" + analysis + 
-                "\n\nWould you like me to create a PR with these changes? (Reply with /createPr to confirm)"
+                "Here's my suggested content:\n\n" + analysis + 
+                "\n\nWhat would you like to do?",
+                reply_markup=reply_markup
             )
 
             logger.info(f"Analysis completed for {readme_path}")
@@ -400,29 +412,79 @@ class TelegramAIBot:
         try:
             query = update.callback_query
             user = query.from_user
+            
+            if not await self.check_admin(user):
+                await query.answer("Only admins can perform this action.")
+                return
+                
             logger.info(f"Button callback from user {user.username}: {query.data}")
             
-            query.answer()
+            await query.answer()
 
-            action, pr_number = query.data.split('_')
-            pr_number = int(pr_number)
-
-            pr = self.repo.get_pull(pr_number)
+            if query.data.startswith("create_pr_"):
+                # Create PR with the current suggestion
+                if 'pending_analysis' in context.user_data:
+                    pending = context.user_data['pending_analysis']
+                    branch_name = f"update-{base64.b64encode(os.urandom(6)).decode('utf-8')}"
+                    source = self.repo.get_branch("main")
+                    
+                    self.repo.create_git_ref(f"refs/heads/{branch_name}", source.commit.sha)
+                    
+                    file = self.repo.get_contents(pending['path'], ref="main")
+                    self.repo.update_file(
+                        path=pending['path'],
+                        message="Update content via Telegram bot",
+                        content=pending['content'],  # This now contains only the suggested content
+                        sha=file.sha,
+                        branch=branch_name
+                    )
+                    
+                    pr = self.repo.create_pull(
+                        title=f"Update {pending['path']}",
+                        body="AI-assisted update via Telegram bot",
+                        head=branch_name,
+                        base="main"
+                    )
+                    
+                    await query.edit_message_text(f"Created PR: {pr.html_url}")
+                    del context.user_data['pending_analysis']
+                
+            elif query.data.startswith("improve_"):
+                # Get improved suggestion
+                if 'pending_analysis' in context.user_data:
+                    pending = context.user_data['pending_analysis']
+                    improved_analysis = await self.analyze_with_gpt(
+                        f"Please improve this suggestion:\n{pending['content']}",
+                        pending['original_message'],
+                        pending['path']
+                    )
+                    
+                    # Update stored content
+                    context.user_data['pending_analysis']['content'] = improved_analysis
+                    
+                    # Show new suggestion with same buttons
+                    keyboard = [
+                        [
+                            InlineKeyboardButton("Create PR", callback_data=f"create_pr_{pending['path']}"),
+                            InlineKeyboardButton("Improve Suggestion", callback_data=f"improve_{pending['path']}"),
+                            InlineKeyboardButton("Cancel", callback_data="cancel")
+                        ]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await query.edit_message_text(
+                        f"Here's my improved suggestion:\n\n{improved_analysis}\n\nWhat would you like to do?",
+                        reply_markup=reply_markup
+                    )
             
-            if action == 'merge':
-                if pr.mergeable:
-                    pr.merge(merge_method='squash')
-                    await query.edit_message_text(f"Successfully merged PR #{pr_number}")
-                else:
-                    await query.edit_message_text("This PR cannot be merged. Please check for conflicts.")
-            
-            elif action == 'close':
-                pr.edit(state='closed')
-                await query.edit_message_text(f"Successfully closed PR #{pr_number}")
+            elif query.data == "cancel":
+                if 'pending_analysis' in context.user_data:
+                    del context.user_data['pending_analysis']
+                await query.edit_message_text("Analysis cancelled.")
 
         except Exception as e:
             logger.error(f"Error in button callback: {str(e)}", exc_info=True)
-            await query.edit_message_text(f"Error processing PR: {str(e)}")
+            await query.edit_message_text(f"Error processing request: {str(e)}")
 
     async def get_repo_structure(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show repository structure up to MD files"""
