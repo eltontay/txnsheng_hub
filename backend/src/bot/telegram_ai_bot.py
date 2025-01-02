@@ -530,26 +530,39 @@ class TelegramAIBot:
             await update.message.reply_text(f"Error getting repository structure: {str(e)}")
 
     async def public_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Public chat function that allows users to interact with an AI agent"""
+        """Chat function that handles both admin and public users"""
         try:
             user = update.effective_user
             message = update.message.text
-            logger.info(f"Public chat message from user {user.username}: {message}")
+            is_admin = await self.check_admin(user)
+            logger.info(f"Chat message from {'admin' if is_admin else 'user'} {user.username}: {message}")
 
             # Remove the command if present
             if message.startswith('/chat'):
                 message = message[5:].strip()
 
             if not message:
-                await update.message.reply_text(
+                base_help = (
                     "Hello! I'm txnsheng's AI assistant. How can I help you?\n\n"
                     "You can ask me about:\n"
                     "- Circle and USDC\n"
                     "- AI Frameworks research\n"
                     "- Developer Relations\n"
-                    "- Blockchain ecosystem\n"
-                    "Or anything else you'd like to know!"
+                    "- Blockchain ecosystem"
                 )
+                
+                if is_admin:
+                    admin_help = (
+                        "\n\nAs an admin, you can also:\n"
+                        "- Update repository content\n"
+                        "- Manage PRs\n"
+                        "- Access analytics\n"
+                        "- View detailed research\n"
+                        "Use /help for admin commands"
+                    )
+                    await update.message.reply_text(base_help + admin_help)
+                else:
+                    await update.message.reply_text(base_help)
                 return
 
             # Get repository content based on topic
@@ -574,32 +587,41 @@ class TelegramAIBot:
                 if not context_content:
                     context_content = "I'll do my best to help based on my general knowledge."
 
-                # Prepare prompt for GPT
-                prompt = f"""You are txnsheng's AI assistant. You have access to the following repository content:
+                # Different system prompts for admin and public
+                if is_admin:
+                    system_prompt = f"""You are txnsheng's AI assistant speaking to an admin. You have access to the following repository content:
 
 {context_content}
 
-User question: {message}
+Provide detailed, technical responses and include admin-specific information when relevant. You can reference internal data and provide specific suggestions for updates or improvements."""
+                else:
+                    system_prompt = f"""You are txnsheng's AI assistant speaking to a public user. You have access to the following repository content:
 
-Please provide a helpful, friendly response based on the available information. If you're not sure about something, say so.
-Keep responses concise but informative. Include relevant links when available."""
+{context_content}
+
+Provide helpful, friendly responses based on publicly available information. Keep responses concise and informative."""
 
                 # Get response from GPT
                 response = client.chat.completions.create(
                     model="gpt-4-turbo-preview",
                     messages=[
-                        {"role": "system", "content": prompt},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": message}
                     ],
                     temperature=0.7,
                     max_tokens=500
                 )
 
+                # For admins, add suggestion for updates if relevant
+                reply_text = response.choices[0].message.content
+                if is_admin and any(keyword in message.lower() for keyword in ['update', 'change', 'edit', 'modify']):
+                    reply_text += "\n\nWould you like me to help create a PR with any updates? Use /analyzeContent to get started."
+
                 await update.message.reply_text(
-                    response.choices[0].message.content,
+                    reply_text,
                     parse_mode='Markdown'
                 )
-                logger.info(f"Sent response to user {user.username}")
+                logger.info(f"Sent response to {'admin' if is_admin else 'user'} {user.username}")
 
             except Exception as e:
                 logger.error(f"Error accessing repository content: {str(e)}", exc_info=True)
@@ -609,7 +631,7 @@ Keep responses concise but informative. Include relevant links when available.""
                 )
 
         except Exception as e:
-            logger.error(f"Error in public chat: {str(e)}", exc_info=True)
+            logger.error(f"Error in chat: {str(e)}", exc_info=True)
             await update.message.reply_text(
                 "I apologize, but I encountered an error. Please try again later."
             )
