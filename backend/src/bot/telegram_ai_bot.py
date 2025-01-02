@@ -135,12 +135,25 @@ class TelegramAIBot:
             )
             return
 
-        logger.info(f"New user started bot: {user.id} - {user.username}")
-        
-        # Different messages for admin and regular users
+        logger.info(f"New user started bot: {user.id} - {user.username} (Admin: {is_admin})")
+
+        # Base message for all users
+        base_message = (
+            "Hello! I'm your AI-powered repository assistant. I can help manage and update the repository content.\n\n"
+            "Chat Features:\n"
+            "/chat - Start a conversation with me\n"
+            "You can also just send messages directly!\n\n"
+            "I can help with:\n"
+            "• Circle and USDC information\n"
+            "• AI Frameworks research\n"
+            "• Developer Relations\n"
+            "• Blockchain ecosystem\n\n"
+        )
+
+        # Admin-specific message
         if is_admin:
-            await update.message.reply_text(
-                "Hello Admin! I'm your AI-powered repository assistant. Here are your available commands:\n\n"
+            admin_message = (
+                "Admin Commands:\n"
                 "Repository Management:\n"
                 "/repoStructure - Show repository structure with MD files\n\n"
                 
@@ -158,7 +171,7 @@ class TelegramAIBot:
                 "/mergePr <number> - Merge a specific PR\n"
                 "/closePr <number> - Close a specific PR\n\n"
                 
-                "Admin Commands:\n"
+                "User Management:\n"
                 "/addUser <username> - Add new allowed user\n"
                 "/removeUser <username> - Remove allowed user\n"
                 "/listUsers - Show all allowed users\n\n"
@@ -169,13 +182,33 @@ class TelegramAIBot:
                 "It can span multiple lines\n\n"
                 "And have proper formatting\n\n"
                 "- Even bullet points\n"
-                "- And lists"
+                "- And lists\n\n"
+                
+                "Chat Features (Admin):\n"
+                "• Detailed technical responses\n"
+                "• Access to internal data\n"
+                "• Update suggestions\n"
+                "• PR creation options\n"
             )
+            await update.message.reply_text(base_message + admin_message)
         else:
-            await update.message.reply_text(
-                "Hello! I'm your AI-powered repository assistant.\n\n"
-                "Please contact @txnsheng for admin access to use the bot's features."
+            public_message = (
+                "Available Commands:\n"
+                "/chat - Start a conversation\n\n"
+                
+                "Chat Features:\n"
+                "• Ask questions about Circle and USDC\n"
+                "• Learn about AI frameworks\n"
+                "• Explore blockchain ecosystem\n"
+                "• Get developer resources\n\n"
+                
+                "Example:\n"
+                "You: Tell me about USDC\n"
+                "Me: *provides information about USDC*\n\n"
+                
+                "Just start typing to chat with me!"
             )
+            await update.message.reply_text(base_message + public_message)
 
     async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
@@ -530,7 +563,7 @@ class TelegramAIBot:
             await update.message.reply_text(f"Error getting repository structure: {str(e)}")
 
     async def public_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Chat function that handles both admin and public users"""
+        """Chat function that handles both admin and public users with engaging responses"""
         try:
             user = update.effective_user
             message = update.message.text
@@ -543,22 +576,23 @@ class TelegramAIBot:
 
             if not message:
                 base_help = (
-                    "Hello! I'm txnsheng's AI assistant. How can I help you?\n\n"
-                    "You can ask me about:\n"
-                    "- Circle and USDC\n"
-                    "- AI Frameworks research\n"
-                    "- Developer Relations\n"
-                    "- Blockchain ecosystem"
+                    "Hey there! 👋 I'm txnsheng's AI assistant.\n\n"
+                    "Feel free to ask me about:\n"
+                    "• Circle and USDC\n"
+                    "• AI Frameworks in crypto\n"
+                    "• Developer Relations\n"
+                    "• Blockchain ecosystem\n\n"
+                    "Just type your question and I'll help you out!"
                 )
                 
                 if is_admin:
                     admin_help = (
-                        "\n\nAs an admin, you can also:\n"
-                        "- Update repository content\n"
-                        "- Manage PRs\n"
-                        "- Access analytics\n"
-                        "- View detailed research\n"
-                        "Use /help for admin commands"
+                        "\nAs an admin, you can also:\n"
+                        "• Update repository content\n"
+                        "• Manage PRs\n"
+                        "• Access analytics\n"
+                        "• View detailed research\n\n"
+                        "Need the full command list? Just type /help 😊"
                     )
                     await update.message.reply_text(base_help + admin_help)
                 else:
@@ -585,21 +619,44 @@ class TelegramAIBot:
                     context_content += file.decoded_content.decode() + "\n\n"
 
                 if not context_content:
-                    context_content = "I'll do my best to help based on my general knowledge."
+                    context_content = "I'll help based on my general knowledge."
 
                 # Different system prompts for admin and public
                 if is_admin:
-                    system_prompt = f"""You are txnsheng's AI assistant speaking to an admin. You have access to the following repository content:
+                    system_prompt = f"""You are txnsheng's AI assistant speaking to an admin. You have access to repository content for reference.
 
+Style Guide:
+- Be professional yet friendly and engaging
+- Use natural conversational tone
+- Avoid markdown formatting
+- Use emojis sparingly but effectively
+- Break up long responses into readable chunks
+- Add relevant links when appropriate
+- For technical details, use clear, concise explanations
+- Suggest relevant admin actions when appropriate
+
+Repository Content:
 {context_content}
 
-Provide detailed, technical responses and include admin-specific information when relevant. You can reference internal data and provide specific suggestions for updates or improvements."""
+Remember to maintain a helpful, knowledgeable tone while being concise and clear."""
+
                 else:
-                    system_prompt = f"""You are txnsheng's AI assistant speaking to a public user. You have access to the following repository content:
+                    system_prompt = f"""You are txnsheng's AI assistant speaking to a public user. You have access to repository content for reference.
 
+Style Guide:
+- Be friendly and approachable
+- Use natural conversational tone
+- Avoid markdown formatting
+- Use emojis sparingly but effectively
+- Break up long responses into readable chunks
+- Add relevant links when appropriate
+- Keep technical explanations simple and clear
+- Focus on publicly available information
+
+Repository Content:
 {context_content}
 
-Provide helpful, friendly responses based on publicly available information. Keep responses concise and informative."""
+Remember to be helpful and engaging while keeping responses clear and concise."""
 
                 # Get response from GPT
                 response = client.chat.completions.create(
@@ -615,25 +672,22 @@ Provide helpful, friendly responses based on publicly available information. Kee
                 # For admins, add suggestion for updates if relevant
                 reply_text = response.choices[0].message.content
                 if is_admin and any(keyword in message.lower() for keyword in ['update', 'change', 'edit', 'modify']):
-                    reply_text += "\n\nWould you like me to help create a PR with any updates? Use /analyzeContent to get started."
+                    reply_text += "\n\nWould you like me to help create a PR with these updates? Just let me know and I'll guide you through the process! 😊"
 
-                await update.message.reply_text(
-                    reply_text,
-                    parse_mode='Markdown'
-                )
+                await update.message.reply_text(reply_text)
                 logger.info(f"Sent response to {'admin' if is_admin else 'user'} {user.username}")
 
             except Exception as e:
                 logger.error(f"Error accessing repository content: {str(e)}", exc_info=True)
                 await update.message.reply_text(
-                    "I'm having trouble accessing some information right now. "
-                    "Let me try to help based on what I know generally."
+                    "I'm having a bit of trouble accessing some information right now. "
+                    "Let me try to help based on what I know! 😊"
                 )
 
         except Exception as e:
             logger.error(f"Error in chat: {str(e)}", exc_info=True)
             await update.message.reply_text(
-                "I apologize, but I encountered an error. Please try again later."
+                "Oops! Something went wrong on my end. Could you try asking that again? 🙏"
             )
 
     def run(self):
