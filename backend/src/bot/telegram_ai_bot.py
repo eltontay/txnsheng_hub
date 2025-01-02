@@ -529,6 +529,91 @@ class TelegramAIBot:
             logger.error(f"Error getting repository structure: {str(e)}", exc_info=True)
             await update.message.reply_text(f"Error getting repository structure: {str(e)}")
 
+    async def public_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Public chat function that allows users to interact with an AI agent"""
+        try:
+            user = update.effective_user
+            message = update.message.text
+            logger.info(f"Public chat message from user {user.username}: {message}")
+
+            # Remove the command if present
+            if message.startswith('/chat'):
+                message = message[5:].strip()
+
+            if not message:
+                await update.message.reply_text(
+                    "Hello! I'm txnsheng's AI assistant. How can I help you?\n\n"
+                    "You can ask me about:\n"
+                    "- Circle and USDC\n"
+                    "- AI Frameworks research\n"
+                    "- Developer Relations\n"
+                    "- Blockchain ecosystem\n"
+                    "Or anything else you'd like to know!"
+                )
+                return
+
+            # Get repository content based on topic
+            try:
+                relevant_files = []
+                
+                # Check work-related content
+                if any(keyword in message.lower() for keyword in ['circle', 'usdc', 'stablecoin', 'dev rel']):
+                    circle_content = self.repo.get_contents("data/work/circle/README.md")
+                    relevant_files.append(circle_content)
+
+                # Check AI research
+                if any(keyword in message.lower() for keyword in ['ai', 'eliza', 'game', 'rig', 'zerepy']):
+                    ai_content = self.repo.get_contents("data/research/ai/README.md")
+                    relevant_files.append(ai_content)
+
+                # Combine relevant content
+                context_content = ""
+                for file in relevant_files:
+                    context_content += file.decoded_content.decode() + "\n\n"
+
+                if not context_content:
+                    context_content = "I'll do my best to help based on my general knowledge."
+
+                # Prepare prompt for GPT
+                prompt = f"""You are txnsheng's AI assistant. You have access to the following repository content:
+
+{context_content}
+
+User question: {message}
+
+Please provide a helpful, friendly response based on the available information. If you're not sure about something, say so.
+Keep responses concise but informative. Include relevant links when available."""
+
+                # Get response from GPT
+                response = client.chat.completions.create(
+                    model="gpt-4-turbo-preview",
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": message}
+                    ],
+                    temperature=0.7,
+                    max_tokens=500
+                )
+
+                await update.message.reply_text(
+                    response.choices[0].message.content,
+                    parse_mode='Markdown'
+                )
+                logger.info(f"Sent response to user {user.username}")
+
+            except Exception as e:
+                logger.error(f"Error accessing repository content: {str(e)}", exc_info=True)
+                await update.message.reply_text(
+                    "I'm having trouble accessing some information right now. "
+                    "Let me try to help based on what I know generally."
+                )
+
+        except Exception as e:
+            logger.error(f"Error in public chat: {str(e)}", exc_info=True)
+            await update.message.reply_text(
+                "I apologize, but I encountered an error. Please try again later."
+            )
+
     def run(self):
         logger.info("Starting bot...")
         application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -550,6 +635,13 @@ class TelegramAIBot:
         application.add_handler(CommandHandler("repoStructure", self.get_repo_structure))
         
         application.add_handler(CallbackQueryHandler(self.button_callback))
+        
+        # Add public chat handler
+        application.add_handler(CommandHandler("chat", self.public_chat))
+        application.add_handler(MessageHandler(
+            filters.TEXT & ~filters.COMMAND, 
+            self.public_chat
+        ))
         
         logger.info("Bot is ready! Starting polling...")
         application.run_polling() 
