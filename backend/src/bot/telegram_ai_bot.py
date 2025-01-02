@@ -125,6 +125,7 @@ class TelegramAIBot:
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
+        is_admin = await self.check_admin(user)
         
         # Check handle-based access
         if not await self.check_access(user):
@@ -135,43 +136,53 @@ class TelegramAIBot:
             return
 
         logger.info(f"New user started bot: {user.id} - {user.username}")
-        await update.message.reply_text(
-            "Hello! I'm your AI-powered repository assistant. I can help manage and update the repository content.\n\n"
-            "Available commands:\n\n"
-            "Repository Management:\n"
-            "/repoStructure - Show current repository structure\n\n"
-            
-            "Content Management:\n"
-            "/analyzeContent - Analyze and suggest updates\n"
-            "Format:\n"
-            "/analyzeContent path/to/file.md\n"
-            "Your content here...\n"
-            "Can span multiple lines\n"
-            "With proper formatting\n\n"
-            
-            "PR Management:\n"
-            "/createPr - Create a PR with pending changes\n"
-            "/listPrs - Show all open PRs\n"
-            "/mergePr <number> - Merge a specific PR\n"
-            "/closePr <number> - Close a specific PR\n\n"
-            
-            "Admin Commands:\n"
-            "/addUser <username> - Add new allowed user\n"
-            "/removeUser <username> - Remove allowed user\n"
-            "/listUsers - Show all allowed users\n\n"
-            
-            "Example usage:\n"
-            "/analyzeContent data/research/README.md\n"
-            "Here's my research about XYZ...\n"
-            "It can span multiple lines\n\n"
-            "And have proper formatting\n\n"
-            "- Even bullet points\n"
-            "- And lists"
-        )
+        
+        # Different messages for admin and regular users
+        if is_admin:
+            await update.message.reply_text(
+                "Hello Admin! I'm your AI-powered repository assistant. Here are your available commands:\n\n"
+                "Repository Management:\n"
+                "/repoStructure - Show repository structure with MD files\n\n"
+                
+                "Content Management:\n"
+                "/analyzeContent - Analyze and suggest updates\n"
+                "Format:\n"
+                "/analyzeContent path/to/file.md\n"
+                "Your content here...\n"
+                "Can span multiple lines\n"
+                "With proper formatting\n\n"
+                
+                "PR Management:\n"
+                "/createPr - Create a PR with pending changes\n"
+                "/listPrs - Show all open PRs\n"
+                "/mergePr <number> - Merge a specific PR\n"
+                "/closePr <number> - Close a specific PR\n\n"
+                
+                "Admin Commands:\n"
+                "/addUser <username> - Add new allowed user\n"
+                "/removeUser <username> - Remove allowed user\n"
+                "/listUsers - Show all allowed users\n\n"
+                
+                "Example usage:\n"
+                "/analyzeContent data/research/README.md\n"
+                "Here's my research about XYZ...\n"
+                "It can span multiple lines\n\n"
+                "And have proper formatting\n\n"
+                "- Even bullet points\n"
+                "- And lists"
+            )
+        else:
+            await update.message.reply_text(
+                "Hello! I'm your AI-powered repository assistant.\n\n"
+                "Please contact @txnsheng for admin access to use the bot's features."
+            )
 
     async def analyze(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = update.effective_user
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can analyze content.")
+                return
             logger.info(f"Analysis requested by user {user.username}")
             
             # Get full message text
@@ -259,6 +270,9 @@ class TelegramAIBot:
     async def create_pr(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = update.effective_user
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can create PRs.")
+                return
             logger.info(f"PR creation requested by user {user.username}")
             
             if 'pending_analysis' not in context.user_data:
@@ -306,6 +320,9 @@ class TelegramAIBot:
     async def list_prs(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = update.effective_user
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can list PRs.")
+                return
             logger.info(f"PR list requested by user {user.username}")
             
             pulls = self.repo.get_pulls(state='open')
@@ -339,6 +356,9 @@ class TelegramAIBot:
     async def merge_pr(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = update.effective_user
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can merge PRs.")
+                return
             pr_number = int(context.args[0])
             logger.info(f"PR #{pr_number} merge requested by user {user.username}")
             
@@ -360,6 +380,9 @@ class TelegramAIBot:
     async def close_pr(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user = update.effective_user
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can close PRs.")
+                return
             pr_number = int(context.args[0])
             logger.info(f"PR #{pr_number} close requested by user {user.username}")
             
@@ -402,20 +425,20 @@ class TelegramAIBot:
             await query.edit_message_text(f"Error processing PR: {str(e)}")
 
     async def get_repo_structure(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Show high-level repository structure"""
+        """Show repository structure up to MD files"""
         try:
             user = update.effective_user
-            if not await self.check_access(user):
-                await update.message.reply_text("Access denied.")
+            if not await self.check_admin(user):
+                await update.message.reply_text("Only admins can view repository structure.")
                 return
 
-            logger.info(f"Repository structure requested by user {user.username}")
+            logger.info(f"Repository structure requested by admin {user.username}")
 
-            def get_high_level_structure(path=""):
+            def get_data_structure(path=""):
                 contents = self.repo.get_contents(path)
                 tree = ""
                 for content in contents:
-                    # Only process data directory and its immediate subdirectories
+                    # Only process data directory and its contents
                     if content.name == "data":
                         tree += f"📁 {content.name}/\n"
                         try:
@@ -423,12 +446,19 @@ class TelegramAIBot:
                             for subcontent in subcontents:
                                 if subcontent.type == "dir":
                                     tree += f"    📁 {subcontent.name}/\n"
+                                    try:
+                                        subsubcontents = self.repo.get_contents(subcontent.path)
+                                        for subsubcontent in subsubcontents:
+                                            if subsubcontent.name.endswith('.md'):
+                                                tree += f"        📄 {subsubcontent.name}\n"
+                                    except Exception as e:
+                                        logger.warning(f"Error accessing {subcontent.path}: {str(e)}")
                         except Exception as e:
                             logger.warning(f"Error accessing {content.path}: {str(e)}")
                 return tree
 
             structure = "Repository Structure:\n\n"
-            structure += get_high_level_structure()
+            structure += get_data_structure()
 
             await update.message.reply_text(structure)
             logger.info("Repository structure sent successfully")
